@@ -227,6 +227,7 @@ FFMPEG.prototype.handleStreamRequest = function(request) {
         var fps = 30;
         var bitrate = 300;
         var vcodec = this.vcodec || 'libx264';
+        var usingHWAccel = sessionInfo['usingHWAccel']
 
         let videoInfo = request["video"];
         if (videoInfo) {
@@ -244,9 +245,13 @@ FFMPEG.prototype.handleStreamRequest = function(request) {
         let targetAddress = sessionInfo["address"];
         let targetVideoPort = sessionInfo["video_port"];
         let videoKey = sessionInfo["video_srtp"];
+        
+        let hwAccelSourceArgs = '-hwaccel vaapi -vaapi_device /dev/dri/renderD128 '
 
-        let ffmpegCommand = this.ffmpegSource + ' -threads 0 -vcodec '+vcodec+' -an -pix_fmt yuv420p -r '+
-        fps +' -f rawvideo -tune zerolatency -vf scale='+ width +':'+ height +' -b:v '+ bitrate +'k -bufsize '+
+        let filterOptions = 'scale=' + width + ':' + height +',format=nv12,hwupload'
+
+        let ffmpegCommand = hwAccelSourceArgs + this.ffmpegSource + ' -threads 0 -vcodec '+vcodec+' -an -pix_fmt yuv420p -r '+
+        fps +' -f rawvideo -tune zerolatency -vf \''+ filterOptions + '\' -b:v '+ bitrate +'k -bufsize '+
          bitrate +'k -payload_type 99 -ssrc 1 -f rtp -srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params '+
          videoKey.toString('base64')+' srtp://'+targetAddress+':'+targetVideoPort+'?rtcpport='+targetVideoPort+
          '&localrtcpport='+targetVideoPort+'&pkt_size=1378';
